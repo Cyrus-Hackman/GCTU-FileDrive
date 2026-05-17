@@ -22,7 +22,7 @@ import { Doc } from "../../../../convex/_generated/dataModel";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 
-function Placeholder() {
+function Placeholder({ title, showUpload }: { title: string, showUpload?: boolean }) {
   return (
     <div className="flex flex-col gap-8 w-full items-center mt-24">
       <Image
@@ -31,8 +31,8 @@ function Placeholder() {
         height="300"
         src="/empty.svg"
       />
-      <div className="text-2xl">You have no files, upload one now</div>
-      <UploadButton />
+      <div className="text-2xl text-slate-600 dark:text-slate-400 font-medium">{title}</div>
+      {showUpload && <UploadButton />}
     </div>
   );
 }
@@ -156,7 +156,18 @@ export function FileBrowser({
         </TabsContent>
       </Tabs>
 
-      {!isLoading && files?.length === 0 && <Placeholder />}
+      {!isLoading && files?.length === 0 && (
+        <Placeholder 
+          title={
+            deletedOnly 
+              ? "Your trash is empty." 
+              : favoritesOnly 
+                ? "You have no favorites yet." 
+                : "You have no files, upload one now."
+          } 
+          showUpload={!deletedOnly && !favoritesOnly}
+        />
+      )}
     </div>
   );
 }
