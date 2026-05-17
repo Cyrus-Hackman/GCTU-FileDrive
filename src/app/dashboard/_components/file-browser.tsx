@@ -85,9 +85,9 @@ export function FileBrowser({
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
-        <h1 className="text-3xl font-bold">{title}</h1>
-        <div className="flex gap-2 w-full sm:w-auto">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <h1 className="text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">{title}</h1>
+        <div className="flex gap-3 w-full sm:w-auto">
           <SearchBar query={query} setQuery={setQuery} />
           <UploadButton />
         </div>

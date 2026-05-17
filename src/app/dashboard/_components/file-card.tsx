@@ -33,8 +33,8 @@ export function FileCard({
   } as Record<Doc<"files">["type"], ReactNode>;
 
   return (
-    <Card className="group relative hover:shadow-2xl hover:border-primary/50 hover:-translate-y-1 transition-all duration-300 ease-in-out overflow-hidden flex flex-col justify-between">
-      <CardHeader className="relative">
+    <Card className="group relative hover:shadow-xl hover:border-blue-500/30 dark:hover:border-blue-500/30 hover:-translate-y-1.5 transition-all duration-300 ease-in-out overflow-hidden flex flex-col justify-between bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-slate-200 dark:border-slate-800">
+      <CardHeader className="relative pt-6">
         <CardTitle className="flex gap-2 text-base font-normal">
           <div className="flex justify-center">{typeIcons[file.type]}</div>{" "}
           {file.name}
@@ -43,7 +43,7 @@ export function FileCard({
           <FileCardActions isFavorited={file.isFavorited} file={file} />
         </div>
       </CardHeader>
-      <CardContent className="relative h-[200px] w-full flex justify-center items-center overflow-hidden bg-gray-50 dark:bg-gray-900 border-y">
+      <CardContent className="relative h-[200px] w-full flex justify-center items-center overflow-hidden bg-slate-50/50 dark:bg-slate-950/50 border-y border-slate-100 dark:border-slate-800">
         {file.type === "image" && file.url && (
           <Image 
             alt={file.name} 

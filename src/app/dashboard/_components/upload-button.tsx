@@ -170,7 +170,7 @@ export function UploadButton() {
       }}
     >
       <DialogTrigger asChild>
-        <Button>Upload File</Button>
+        <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg transition-all rounded-full px-6">Upload File</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
