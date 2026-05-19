@@ -8,7 +8,9 @@
  * @module
  */
 
+import type * as activity from "../activity.js";
 import type * as clerk from "../clerk.js";
+import type * as comments from "../comments.js";
 import type * as crons from "../crons.js";
 import type * as files from "../files.js";
 import type * as http from "../http.js";
@@ -21,7 +23,9 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  activity: typeof activity;
   clerk: typeof clerk;
+  comments: typeof comments;
   crons: typeof crons;
   files: typeof files;
   http: typeof http;

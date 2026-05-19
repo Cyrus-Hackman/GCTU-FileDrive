@@ -25,6 +25,19 @@ export default defineSchema({
     orgId: v.string(),
     userId: v.id("users"),
   }).index("by_userId_orgId_fileId", ["userId", "orgId", "fileId"]),
+  comments: defineTable({
+    fileId: v.id("files"),
+    orgId: v.string(),
+    userId: v.id("users"),
+    text: v.string(),
+  }).index("by_fileId", ["fileId"]),
+  activity_logs: defineTable({
+    orgId: v.string(),
+    userId: v.id("users"),
+    fileId: v.optional(v.id("files")),
+    action: v.string(),
+    details: v.optional(v.string()),
+  }).index("by_orgId", ["orgId"]),
   users: defineTable({
     tokenIdentifier: v.string(),
     name: v.optional(v.string()),

@@ -66,12 +66,19 @@ export const createFile = mutation({
       throw new ConvexError("you do not have access to this org");
     }
 
-    await ctx.db.insert("files", {
+    const newFileId = await ctx.db.insert("files", {
       name: args.name,
       orgId: args.orgId,
       fileId: args.fileId,
       type: args.type,
       userId: hasAccess.user._id,
+    });
+
+    await ctx.db.insert("activity_logs", {
+      orgId: args.orgId,
+      userId: hasAccess.user._id,
+      fileId: newFileId,
+      action: "uploaded",
     });
   },
 });
@@ -179,6 +186,13 @@ export const deleteFile = mutation({
     await ctx.db.patch(args.fileId, {
       shouldDelete: true,
     });
+
+    await ctx.db.insert("activity_logs", {
+      orgId: access.file.orgId,
+      userId: access.user._id,
+      fileId: args.fileId,
+      action: "marked for deletion",
+    });
   },
 });
 
@@ -195,6 +209,13 @@ export const restoreFile = mutation({
 
     await ctx.db.patch(args.fileId, {
       shouldDelete: false,
+    });
+
+    await ctx.db.insert("activity_logs", {
+      orgId: access.file.orgId,
+      userId: access.user._id,
+      fileId: args.fileId,
+      action: "restored",
     });
   },
 });
@@ -224,8 +245,20 @@ export const toggleFavorite = mutation({
         userId: access.user._id,
         orgId: access.file.orgId,
       });
+      await ctx.db.insert("activity_logs", {
+        orgId: access.file.orgId,
+        userId: access.user._id,
+        fileId: access.file._id,
+        action: "favorited",
+      });
     } else {
       await ctx.db.delete(favorite._id);
+      await ctx.db.insert("activity_logs", {
+        orgId: access.file.orgId,
+        userId: access.user._id,
+        fileId: access.file._id,
+        action: "unfavorited",
+      });
     }
   },
 });

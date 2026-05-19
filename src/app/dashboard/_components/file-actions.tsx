@@ -13,6 +13,7 @@ import {
   StarIcon,
   TrashIcon,
   UndoIcon,
+  MessageSquare,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -29,6 +30,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { toast } from "sonner";
 import { Protect } from "@clerk/nextjs";
+import { FileComments } from "./file-comments";
 
 export function FileCardActions({
   file,
@@ -43,6 +45,7 @@ export function FileCardActions({
   const me = useQuery(api.users.getMe);
 
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
 
   return (
     <>
@@ -107,6 +110,13 @@ export function FileCardActions({
             )}
           </DropdownMenuItem>
 
+          <DropdownMenuItem
+            onClick={() => setIsCommentsOpen(true)}
+            className="flex gap-1 items-center cursor-pointer"
+          >
+            <MessageSquare className="w-4 h-4" /> Comments
+          </DropdownMenuItem>
+
           <Protect
             condition={(check) => {
               return (
@@ -143,6 +153,12 @@ export function FileCardActions({
           </Protect>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <FileComments 
+        file={file} 
+        isOpen={isCommentsOpen} 
+        setIsOpen={setIsCommentsOpen} 
+      />
     </>
   );
 }
