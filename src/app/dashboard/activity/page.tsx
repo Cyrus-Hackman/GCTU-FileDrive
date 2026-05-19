@@ -103,7 +103,7 @@ export default function ActivityPage() {
                   
                   {activity.details && (
                     <div className="mt-2 text-sm bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800/50 text-slate-600 dark:text-slate-400 italic">
-                      "{activity.details}"
+                      &quot;{activity.details}&quot;
                     </div>
                   )}
                 </div>
