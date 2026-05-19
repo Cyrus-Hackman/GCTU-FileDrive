@@ -44,7 +44,7 @@ export function Header() {
 
         <div className="flex gap-3 items-center ml-auto md:ml-0">
           <OrganizationSwitcher appearance={clerkAppearance} />
-          <UserButton appearance={clerkAppearance} />
+          <UserButton appearance={clerkAppearance} afterSignOutUrl="/" />
           <ModeToggle />
           <SignedOut>
             <SignInButton afterSignInUrl="/dashboard/files" afterSignUpUrl="/dashboard/files">
