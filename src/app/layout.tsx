@@ -7,6 +7,7 @@ import { Header } from "./header";
 import { Toaster } from "@/components/ui/sonner";
 import { Footer } from "./footer";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -45,6 +46,7 @@ export default function RootLayout({
             <Toaster richColors />
             <Header />
             {children}
+            <Analytics />
             <Footer />
           </ConvexClientProvider>
         </ThemeProvider>
