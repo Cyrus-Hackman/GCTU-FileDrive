@@ -6,9 +6,17 @@ import {
   mutation,
   query,
 } from "./_generated/server";
-import { getUser } from "./users";
 import { fileTypes } from "./schema";
 import { Doc, Id } from "./_generated/dataModel";
+
+// how long a file stays in the trash before the cron permanently deletes it
+const TRASH_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+
+const allowedContentTypes: Record<Doc<"files">["type"], string[]> = {
+  image: ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp"],
+  pdf: ["application/pdf"],
+  csv: ["text/csv", "application/vnd.ms-excel"],
+};
 
 export const generateUploadUrl = mutation(async (ctx) => {
   const identity = await ctx.auth.getUserIdentity();
@@ -43,7 +51,7 @@ export async function hasAccessToOrg(
 
   const hasAccess =
     user.orgIds.some((item) => item.orgId === orgId) ||
-    user.tokenIdentifier.includes(orgId);
+    identity.subject === orgId;
 
   if (!hasAccess) {
     return null;
@@ -64,6 +72,20 @@ export const createFile = mutation({
 
     if (!hasAccess) {
       throw new ConvexError("you do not have access to this org");
+    }
+
+    const storedFile = await ctx.db.system.get(args.fileId);
+
+    if (!storedFile) {
+      throw new ConvexError("uploaded file not found");
+    }
+
+    if (
+      !storedFile.contentType ||
+      !allowedContentTypes[args.type].includes(storedFile.contentType)
+    ) {
+      await ctx.storage.delete(args.fileId);
+      throw new ConvexError("file content does not match the given type");
     }
 
     const newFileId = await ctx.db.insert("files", {
@@ -153,10 +175,36 @@ export const deleteAllFiles = internalMutation({
       .withIndex("by_shouldDelete", (q) => q.eq("shouldDelete", true))
       .collect();
 
+    const now = Date.now();
+
     await Promise.all(
       files.map(async (file) => {
+        // files trashed before deletedAt existed get a full retention period from now
+        if (file.deletedAt === undefined) {
+          await ctx.db.patch(file._id, { deletedAt: now });
+          return;
+        }
+
+        if (now - file.deletedAt < TRASH_RETENTION_MS) {
+          return;
+        }
+
+        const favorites = await ctx.db
+          .query("favorites")
+          .withIndex("by_fileId", (q) => q.eq("fileId", file._id))
+          .collect();
+        const comments = await ctx.db
+          .query("comments")
+          .withIndex("by_fileId", (q) => q.eq("fileId", file._id))
+          .collect();
+
+        await Promise.all([
+          ...favorites.map((favorite) => ctx.db.delete(favorite._id)),
+          ...comments.map((comment) => ctx.db.delete(comment._id)),
+        ]);
+
         await ctx.storage.delete(file.fileId);
-        return await ctx.db.delete(file._id);
+        await ctx.db.delete(file._id);
       })
     );
   },
@@ -185,6 +233,7 @@ export const deleteFile = mutation({
 
     await ctx.db.patch(args.fileId, {
       shouldDelete: true,
+      deletedAt: Date.now(),
     });
 
     await ctx.db.insert("activity_logs", {
@@ -209,6 +258,7 @@ export const restoreFile = mutation({
 
     await ctx.db.patch(args.fileId, {
       shouldDelete: false,
+      deletedAt: undefined,
     });
 
     await ctx.db.insert("activity_logs", {
@@ -283,7 +333,7 @@ export const getAllFavorites = query({
   },
 });
 
-async function hasAccessToFile(
+export async function hasAccessToFile(
   ctx: QueryCtx | MutationCtx,
   fileId: Id<"files">
 ) {

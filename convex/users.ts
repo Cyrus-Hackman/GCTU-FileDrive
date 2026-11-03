@@ -6,7 +6,6 @@ import {
   query,
 } from "./_generated/server";
 import { roles } from "./schema";
-import { hasAccessToOrg } from "./files";
 
 export async function getUser(
   ctx: QueryCtx | MutationCtx,
@@ -64,8 +63,24 @@ export const addOrgIdToUser = internalMutation({
   async handler(ctx, args) {
     const user = await getUser(ctx, args.tokenIdentifier);
 
+    // webhooks can be retried, so don't add the same org twice
+    if (user.orgIds.some((org) => org.orgId === args.orgId)) {
+      return;
+    }
+
     await ctx.db.patch(user._id, {
       orgIds: [...user.orgIds, { orgId: args.orgId, role: args.role }],
+    });
+  },
+});
+
+export const removeOrgIdFromUser = internalMutation({
+  args: { tokenIdentifier: v.string(), orgId: v.string() },
+  async handler(ctx, args) {
+    const user = await getUser(ctx, args.tokenIdentifier);
+
+    await ctx.db.patch(user._id, {
+      orgIds: user.orgIds.filter((org) => org.orgId !== args.orgId),
     });
   },
 });
@@ -112,11 +127,13 @@ export const getMe = query({
       return null;
     }
 
-    const user = await getUser(ctx, identity.tokenIdentifier);
-
-    if (!user) {
-      return null;
-    }
+    // the user may not exist yet if the Clerk webhook hasn't arrived
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_tokenIdentifier", (q) =>
+        q.eq("tokenIdentifier", identity.tokenIdentifier)
+      )
+      .first();
 
     return user;
   },

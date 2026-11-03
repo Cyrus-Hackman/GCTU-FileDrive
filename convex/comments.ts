@@ -1,38 +1,46 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { hasAccessToOrg } from "./files";
+import { hasAccessToFile } from "./files";
+
+const MAX_COMMENT_LENGTH = 1000;
 
 export const addComment = mutation({
   args: {
     fileId: v.id("files"),
-    orgId: v.string(),
     text: v.string(),
   },
   async handler(ctx, args) {
-    const hasAccess = await hasAccessToOrg(ctx, args.orgId);
+    const access = await hasAccessToFile(ctx, args.fileId);
 
-    if (!hasAccess) {
-      throw new ConvexError("You do not have access to this org");
+    if (!access) {
+      throw new ConvexError("You do not have access to this file");
     }
 
-    const file = await ctx.db.get(args.fileId);
-    if (!file) {
-      throw new ConvexError("File not found");
+    const text = args.text.trim();
+
+    if (!text) {
+      throw new ConvexError("Comment cannot be empty");
+    }
+
+    if (text.length > MAX_COMMENT_LENGTH) {
+      throw new ConvexError(
+        `Comment cannot be longer than ${MAX_COMMENT_LENGTH} characters`
+      );
     }
 
     await ctx.db.insert("comments", {
-      fileId: args.fileId,
-      orgId: args.orgId,
-      userId: hasAccess.user._id,
-      text: args.text,
+      fileId: access.file._id,
+      orgId: access.file.orgId,
+      userId: access.user._id,
+      text,
     });
-    
+
     await ctx.db.insert("activity_logs", {
-      orgId: args.orgId,
-      userId: hasAccess.user._id,
-      fileId: args.fileId,
+      orgId: access.file.orgId,
+      userId: access.user._id,
+      fileId: access.file._id,
       action: "commented on",
-      details: args.text.substring(0, 50) + (args.text.length > 50 ? "..." : ""),
+      details: text.substring(0, 50) + (text.length > 50 ? "..." : ""),
     });
   },
 });
@@ -40,12 +48,11 @@ export const addComment = mutation({
 export const getComments = query({
   args: {
     fileId: v.id("files"),
-    orgId: v.string(),
   },
   async handler(ctx, args) {
-    const hasAccess = await hasAccessToOrg(ctx, args.orgId);
+    const access = await hasAccessToFile(ctx, args.fileId);
 
-    if (!hasAccess) {
+    if (!access) {
       return [];
     }
 
