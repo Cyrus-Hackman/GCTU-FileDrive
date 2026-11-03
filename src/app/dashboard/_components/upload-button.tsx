@@ -41,6 +41,18 @@ const formSchema = z.object({
     .refine((files) => files.length > 0, `Required`),
 });
 
+// must stay in sync with the dropzone `accept` list and allowedContentTypes in convex/files.ts
+const types: Record<string, Doc<"files">["type"]> = {
+  "image/png": "image",
+  "image/jpeg": "image",
+  "image/jpg": "image",
+  "image/gif": "image",
+  "image/webp": "image",
+  "application/pdf": "pdf",
+  "text/csv": "csv",
+  "application/vnd.ms-excel": "csv",
+};
+
 export function UploadButton() {
   const organization = useOrganization();
   const user = useUser();
@@ -54,8 +66,6 @@ export function UploadButton() {
       file: undefined,
     },
   });
-
-  const fileRef = form.register("file");
 
   const [isFileDialogOpen, setIsFileDialogOpen] = useState(false);
 
@@ -91,74 +101,78 @@ export function UploadButton() {
       return;
     }
 
-    try {
-      const files = Array.from(values.file);
-      
-      await Promise.all(
-        files.map(async (file) => {
-          const fileType = file.type;
-          
-          const types = {
-            "image/png": "image",
-            "image/jpeg": "image", 
-            "image/jpg": "image",
-            "image/gif": "image",
-            "image/webp": "image",
-            "image/svg+xml": "image",
-            "application/pdf": "pdf",
-            "text/csv": "csv",
-            "application/vnd.ms-excel": "csv",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "csv",
-            "text/plain": "csv",
-          } as Record<string, Doc<"files">["type"]>;
+    const files = Array.from(values.file);
 
-          const mappedType = types[fileType];
-          
-          if (!mappedType) {
-            throw new Error(`File type "${fileType}" is not supported.`);
-          }
+    // upload each file independently so one failure doesn't hide which ones succeeded
+    const results = await Promise.allSettled(
+      files.map(async (file) => {
+        // some systems report an empty MIME type for .csv files
+        const fileType =
+          file.type || (file.name.toLowerCase().endsWith(".csv") ? "text/csv" : "");
 
-          const postUrl = await generateUploadUrl();
+        const mappedType = types[fileType];
 
-          const result = await fetch(postUrl, {
-            method: "POST",
-            headers: { "Content-Type": fileType },
-            body: file,
-          });
+        if (!mappedType) {
+          throw new Error(`${file.name}: file type "${fileType}" is not supported.`);
+        }
 
-          if (!result.ok) {
-            const errorText = await result.text();
-            throw new Error(`Upload failed with status: ${result.status}. ${errorText}`);
-          }
+        const postUrl = await generateUploadUrl();
 
-          const uploadResult = await result.json();
-          const { storageId } = uploadResult;
+        const result = await fetch(postUrl, {
+          method: "POST",
+          headers: { "Content-Type": fileType },
+          body: file,
+        });
 
-          const titleToUse = files.length === 1 && values.title ? values.title : file.name;
+        if (!result.ok) {
+          const errorText = await result.text();
+          throw new Error(`${file.name}: upload failed with status ${result.status}. ${errorText}`);
+        }
 
-          await createFile({
-            name: titleToUse,
-            fileId: storageId,
-            orgId: orgId!,
-            type: mappedType,
-          });
-        })
-      );
+        const { storageId } = await result.json();
 
-      // Reset form and close dialog
+        const titleToUse = files.length === 1 && values.title ? values.title : file.name;
+
+        await createFile({
+          name: titleToUse,
+          fileId: storageId,
+          orgId: orgId!,
+          type: mappedType,
+        });
+      })
+    );
+
+    const failedFiles = files.filter((_, i) => results[i].status === "rejected");
+
+    if (failedFiles.length === 0) {
       form.reset();
       setIsFileDialogOpen(false);
 
       toast.success("Files Uploaded Successfully", {
         description: "Now everyone can view your files",
       });
-
-    } catch (err) {
-      console.error("Upload error:", err);
-      toast.error("Upload Failed", {
-        description: err instanceof Error ? err.message : "Your file could not be uploaded, try again later",
-      });
+      return;
     }
+
+    const firstError = results.find(
+      (r): r is PromiseRejectedResult => r.status === "rejected"
+    )!.reason;
+    console.error("Upload error:", firstError);
+
+    // keep only the failed files selected so a retry doesn't duplicate the successful ones
+    form.setValue("file", failedFiles);
+
+    toast.error(
+      failedFiles.length === files.length
+        ? "Upload Failed"
+        : `${failedFiles.length} of ${files.length} files failed to upload`,
+      {
+        description:
+          firstError instanceof Error
+            ? firstError.message
+            : "Your file could not be uploaded, try again later",
+      }
+    );
   }
 
   return (

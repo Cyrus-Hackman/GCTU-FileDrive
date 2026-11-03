@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatRelative } from "date-fns";
 import { TrashIcon, Loader2 } from "lucide-react";
-import { useOrganization, useUser } from "@clerk/nextjs";
+import { toast } from "sonner";
 
 export function FileComments({
   file,
@@ -24,15 +24,11 @@ export function FileComments({
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
 }) {
-  const { organization, isLoaded: orgLoaded } = useOrganization();
-  const { user, isLoaded: userLoaded } = useUser();
-  const orgId = organization?.id ?? user?.id;
-
   const comments = useQuery(
     api.comments.getComments,
-    orgId ? { fileId: file._id, orgId } : "skip"
+    isOpen ? { fileId: file._id } : "skip"
   );
-  
+
   const me = useQuery(api.users.getMe);
   const addComment = useMutation(api.comments.addComment);
   const deleteComment = useMutation(api.comments.deleteComment);
@@ -42,16 +38,19 @@ export function FileComments({
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newComment.trim() || !orgId) return;
+    if (!newComment.trim()) return;
 
     setIsSubmitting(true);
     try {
       await addComment({
         fileId: file._id,
-        orgId,
-        text: newComment,
+        text: newComment.trim(),
       });
       setNewComment("");
+    } catch (err) {
+      toast.error("Could not post comment", {
+        description: err instanceof Error ? err.message : undefined,
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -98,7 +97,11 @@ export function FileComments({
                     {comment.text}
                     {me?._id === comment.userId && (
                       <button
-                        onClick={() => deleteComment({ commentId: comment._id })}
+                        onClick={() =>
+                          deleteComment({ commentId: comment._id }).catch(() =>
+                            toast.error("Could not delete comment")
+                          )
+                        }
                         className="absolute -right-2 -top-2 bg-red-100 dark:bg-red-900/30 text-red-600 p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-200"
                         title="Delete comment"
                       >
@@ -116,6 +119,7 @@ export function FileComments({
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               placeholder="Add a comment..."
+              maxLength={1000}
               className="flex-1"
               disabled={isSubmitting}
             />

@@ -1,4 +1,4 @@
-import { Doc, Id } from "../../../../convex/_generated/dataModel";
+import { Doc } from "../../../../convex/_generated/dataModel";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,20 +54,25 @@ export function FileCardActions({
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action will mark the file for our deletion process. Files are
-              deleted periodically
+              This will move the file to the trash. You can restore it from
+              the trash within 30 days, after which it is permanently deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={async () => {
-                await deleteFile({
-                  fileId: file._id,
-                });
-                toast("File marked for deletion", {
-                  description: "Your file will be deleted soon",
-                });
+                try {
+                  await deleteFile({
+                    fileId: file._id,
+                  });
+                  toast("File moved to trash", {
+                    description:
+                      "It will be permanently deleted after 30 days",
+                  });
+                } catch {
+                  toast.error("Could not delete file");
+                }
               }}
             >
               Continue
@@ -95,7 +100,7 @@ export function FileCardActions({
             onClick={() => {
               toggleFavorite({
                 fileId: file._id,
-              });
+              }).catch(() => toast.error("Could not update favorites"));
             }}
             className="flex gap-1 items-center cursor-pointer"
           >
@@ -133,7 +138,9 @@ export function FileCardActions({
                 if (file.shouldDelete) {
                   restoreFile({
                     fileId: file._id,
-                  });
+                  })
+                    .then(() => toast.success("File restored"))
+                    .catch(() => toast.error("Could not restore file"));
                 } else {
                   setIsConfirmOpen(true);
                 }
