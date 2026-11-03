@@ -60,7 +60,7 @@ export function FileCard({
         <div className="flex gap-2 text-xs text-gray-700 w-40 items-center">
           <Avatar className="w-6 h-6">
             <AvatarImage src={userProfile?.image} />
-            <AvatarFallback>CN</AvatarFallback>
+            <AvatarFallback>{userProfile?.name?.[0] || "U"}</AvatarFallback>
           </Avatar>
           {userProfile?.name}
         </div>

@@ -12,7 +12,9 @@ export default function ActivityPage() {
   const { organization, isLoaded: orgLoaded } = useOrganization();
   const { user, isLoaded: userLoaded } = useUser();
 
-  const orgId = organization?.id ?? user?.id;
+  // wait for both to load, otherwise we briefly query the personal account
+  const orgId =
+    orgLoaded && userLoaded ? organization?.id ?? user?.id : undefined;
 
   const activities = useQuery(
     api.activity.getActivity,
@@ -69,10 +71,12 @@ export default function ActivityPage() {
           )}
 
           <div className="space-y-6">
-            {activities?.map((activity) => (
+            {activities?.map((activity, index) => (
               <div key={activity._id} className="flex gap-4 items-start relative">
                 {/* Timeline connector */}
-                <div className="absolute top-10 left-5 bottom-[-24px] w-[2px] bg-slate-100 dark:bg-slate-800 last:hidden" />
+                {index < activities.length - 1 && (
+                  <div className="absolute top-10 left-5 bottom-[-24px] w-[2px] bg-slate-100 dark:bg-slate-800" />
+                )}
                 
                 <Avatar className="w-10 h-10 border-2 border-white dark:border-slate-900 shadow-sm z-10">
                   <AvatarImage src={activity.user.image} />
