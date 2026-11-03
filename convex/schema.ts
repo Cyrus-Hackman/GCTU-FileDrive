@@ -17,6 +17,7 @@ export default defineSchema({
     fileId: v.id("_storage"),
     userId: v.id("users"),
     shouldDelete: v.optional(v.boolean()),
+    deletedAt: v.optional(v.number()),
   })
     .index("by_orgId", ["orgId"])
     .index("by_shouldDelete", ["shouldDelete"]),
@@ -24,7 +25,9 @@ export default defineSchema({
     fileId: v.id("files"),
     orgId: v.string(),
     userId: v.id("users"),
-  }).index("by_userId_orgId_fileId", ["userId", "orgId", "fileId"]),
+  })
+    .index("by_userId_orgId_fileId", ["userId", "orgId", "fileId"])
+    .index("by_fileId", ["fileId"]),
   comments: defineTable({
     fileId: v.id("files"),
     orgId: v.string(),
